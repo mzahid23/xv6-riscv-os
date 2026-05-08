@@ -1,109 +1,159 @@
-# Scheduler and System Calls
+# xv6 Lottery Scheduler and System Calls
 
-In this assignment you will be implementing a lottery scheduler, the user program _ps_, and a number of system calls.
+A modified version of the xv6 operating system kernel implementing a lottery-based CPU scheduler, custom system calls, process metadata tracking, and a custom `ps` userspace utility.
 
-## System Calls
+This project focused on operating systems concepts including process scheduling, kernel-level programming, system calls, process control blocks, and CPU time allocation.
 
-### int setColor(enum COLOR )
-You will implement a system call that will set an attribute, color, of a process.  The valid colors a process can be assigned are RED, ORANGE, YELLOW, GREEN, BLUE, INDIGO, and VIOLET.  You will store the color of a process in its process control block.  This routine should return 0 if successful, and -1 otherwise (if, for example, the caller passes in an invalid color).
+---
 
-### int setTickets(int)
-This system call sets the number of tickets of the calling process. By default, each process should get one ticket; calling this routine makes it such that a process can raise the number of tickets it receives, and thus receive a higher proportion of CPU cycles. This routine should return 0 if successful, and -1 otherwise (if, for example, the caller passes in a number less than one). The number of tickets a process can have an integer value of the range 1 to 256.
+## Features
 
-You'll need to assign tickets to a process when it is created. Specfically, you'll need to make sure a child process inherits the same number of tickets as its parents. Thus, if the parent has 10 tickets, and calls fork() to create a child process, the child should also get 10 tickets.
+- Custom lottery scheduler implementation
+- Dynamic CPU ticket allocation per process
+- Custom kernel-level system calls
+- Process color attributes stored in PCB
+- Randomized process scheduling
+- Userspace `ps` utility
+- Process statistics tracking
+- Parent-to-child ticket inheritance
+- CPU tick accounting
 
-### int getpinfo(struct pstat *)
-The second is int getpinfo(struct pstat *). This routine returns some information about all running processes, including how many times each has been chosen to run and the process ID of each. You will use this system call to build a variant of the command line program ps, which can then be called to see what is going on. The structure pstat is defined below; note, you cannot change this structure, and must use it exactly as is. This routine should return 0 if successful, and -1 otherwise (if, for example, a bad or NULL pointer is passed into the kernel).
+---
 
-Good examples of how to pass arguments into the kernel are found in existing system calls. In particular, follow the path of read(), which will lead you to sys_read(), which will show you how to use argptr() (and related calls) to obtain a pointer that has been passed into the kernel. Note how careful the kernel is with pointers passed from user space -- they are a security threat, and thus must be checked very carefully before usage.
+## Technologies Used
 
-### Pseudo random number generator
+- C
+- xv6 Operating System
+- QEMU
+- Linux
+- Git/GitHub
 
-You'll need to add a function to generate random numbers in the kernel; some searching should lead you to a simple pseudo-random number generator, which you can then include in the kernel and use as appropriate.  This is the only code you may use from an external source.
+---
 
-### ps
+## System Calls Implemented
 
-Your ps application will print the following:
+### `setTickets(int tickets)`
 
-```
+Allows a process to dynamically change the number of scheduling tickets assigned to it.
+
+- Ticket range: `1–256`
+- Higher ticket count increases CPU scheduling probability
+- Child processes inherit parent ticket count
+
+---
+
+### `setColor(enum COLOR)`
+
+Stores a color attribute inside the process control block (PCB).
+
+Supported colors:
+- RED
+- ORANGE
+- YELLOW
+- GREEN
+- BLUE
+- INDIGO
+- VIOLET
+
+---
+
+### `getpinfo(struct pstat *)`
+
+Returns process information from the kernel to userspace, including:
+- process name
+- PID
+- process state
+- ticket count
+- CPU ticks accumulated
+- process color
+
+---
+
+## Lottery Scheduler
+
+The default xv6 scheduler was modified to use a lottery scheduling algorithm.
+
+### How it works
+
+- Each process receives one or more tickets
+- A pseudo-random number generator selects the winning ticket
+- Processes with more tickets receive a larger share of CPU time
+- Scheduling fairness is determined probabilistically over time
+
+This project required modifying:
+- `proc.c`
+- `proc.h`
+- scheduler control flow
+- process creation logic
+
+---
+
+## Userspace `ps` Utility
+
+A custom `ps` command was implemented to display process information.
+
+Example output:
+
+```text
 NAME    PID     STATUS      COLOR    TICKETS
-init    1       SLEEPING    RED      10    
+init    1       SLEEPING    RED      10
 sh      2       SLEEPING    ORANGE   2
 test    4       SLEEPING    RED      4
 ps      6       RUNNING     INDIGO   1
 ```
 
-### The scheduler
+---
 
-~Most of the code for the scheduler is quite localized and can be found in proc.c; the associated header file, proc.h is also quite useful to examine. To change the scheduler, not much needs to be done; study its control flow and then try some small changes.~
+## Concepts Learned
 
-You'll need to assign tickets to a process when it is created. Specfically, you'll need to make sure a child process inherits the same number of tickets as its parents. Thus, if the parent has 10 tickets, and calls fork() to create a child process, the child should also get 10 tickets.
+This project strengthened understanding of:
 
-You'll also need to figure out how to generate random numbers in the kernel; some searching should lead you to a simple pseudo-random number generator, which you can then include in the kernel and use as appropriate.
+- Operating system scheduling
+- Kernel development
+- System calls
+- Process management
+- Process control blocks (PCB)
+- Context switching
+- Randomized scheduling algorithms
+- User/kernel space communication
 
-Finally, you'll need to understand how to fill in the structure pstat in the kernel and pass the results to user space. The structure should look like what you see here, in a file you'll have to include called pstat.h:
+---
 
+## Building the Kernel
 
-```c
-#ifndef _PSTAT_H_
-#define _PSTAT_H_
-
-#include "param.h"
-
-struct pstat {
-  char name[NPROC][16];        // name of the process
-  enum procstate state[NPROC]; // state of the process   
-  int inuse[NPROC];            // whether this slot of the process table is in use (1 or 0)
-  int tickets[NPROC];          // the number of tickets this process has
-  int pid[NPROC];              // the PID of each process
-  enum COLOR color[NPROC];     // the color of the proces
-  int ticks[NPROC];            // the number of ticks each process has accumulated 
-};
-
-#endif // _PSTAT_H_
-```
-## Graph and Test Application
-
-~You'll have to make a graph for this assignment. The graph should show the number of time slices a set of three processes receives~
-~over time, where the processes have a 3:2:1 ratio of tickets (e.g., process A might have 30 tickets, process B 20, and process C 10). The graph is likely to be pretty boring, but should clearly show that your lottery scheduler works as desired.  The graph must be submitted as a PDF file at the top level of your repo.~
-
-~To gather this data you will need to write an application that forks three children and each child runs measuring the amount of the processor time each gets.~
-
-## SUBMITTING
-
-Push all your changes to your main branch.  
-
-## BUILDING AND RUNNING XV6
-
-### Setting up the cross-compiling environment
-```
+```bash
 source source_me.sh
-```
-
-### To build the kernel:
-```
 make
 ```
 
-### To build the userspace applications and run the OS
-```
+---
+
+## Running xv6
+
+```bash
 make qemu
 ```
 
-### To exit xv6
-```
+---
+
+## Exiting xv6
+
+```bash
 ctrl-a x
 ```
 
-## Administrative
+---
 
-This assignment must be coded in C. Any other language will result in 0 points. Your programs will be compiled and graded on the course GitHub Codespace. Code that does not compile with the provided makefile will result in a 0.
+## Future Improvements
 
-There are coding resources and working code you may use in the course GitHub repositories.  You are free to use any of that code in your program if needed. You may use no other outside code.
+- Priority-based scheduling
+- Multi-level feedback queue scheduler
+- Improved randomness algorithms
+- Additional scheduler benchmarking
+- Process visualization tools
 
-## Academic Integrity
-This assignment must be 100% your own work. No code may be copied from friends,  previous students, books, web pages, etc. All code submitted is automatically checked 
-against a database of previous semester’s graded assignments, current student’s code and common web sources. By submitting your code on GitHub you are attesting that 
-you have neither given nor received unauthorized assistance on this work. Code that is copied from an external source or used as inspiration, excluding the 
-course github, will result in a 0 for the assignment and referral to the Office of Student Conduct.
+---
 
+## Author
+
+Muhammad Zahid
